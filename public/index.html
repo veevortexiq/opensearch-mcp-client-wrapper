@@ -1,0 +1,1208 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Azure OpenSearch Assistant - Query your data with natural language">
+  <title>OpenSearch Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #0078d4;
+      --light-primary: #e6f2fa;
+      --dark-color: #323130;
+      --light-color: #f8f8f8;
+      --border-color: #e1e1e1;
+      --success-color: #107c10;
+      --error-color: #d13438;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      --transition: 0.2s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      color: var(--dark-color);
+      line-height: 1.5;
+      height: 100vh;
+      background-color: var(--light-color);
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    /* Main container - Now Full Screen */
+    .app-container {
+      max-width: 100%;
+      width: 100%;
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      background-color: #fff;
+    }
+
+    /* Header */
+    .header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: white;
+      z-index: 10;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--primary-color);
+    }
+
+    .toggle-btn {
+      background: none;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 6px 12px;
+      font-size: 13px;
+      color: var(--dark-color);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .toggle-btn:hover {
+      background-color: var(--light-color);
+    }
+
+    /* Chat area */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Message styling */
+    .message {
+      display: flex;
+      max-width: 80%;
+      animation: fadeIn 0.3s;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+      flex-shrink: 0;
+      margin: 0 8px;
+    }
+
+    .user .avatar {
+      background-color: var(--light-primary);
+      color: var(--primary-color);
+    }
+
+    .assistant .avatar {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .message-bubble {
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      position: relative;
+      max-width: calc(100% - 60px);
+    }
+
+    .user .message-bubble {
+      background-color: var(--light-primary);
+      border-bottom-right-radius: 0;
+    }
+
+    .assistant .message-bubble {
+      background-color: var(--light-color);
+      border-bottom-left-radius: 0;
+    }
+
+    /* Tool execution styling */
+    .tool-block {
+      margin-top: 12px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .tool-header {
+      padding: 8px 12px;
+      background-color: var(--light-color);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .tool-name {
+      font-weight: 500;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tool-success {
+      color: var(--success-color);
+    }
+
+    .tool-content {
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 12px;
+      background-color: #fcfcfc;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .json-toggle {
+      background: none;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .json-toggle:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    /* Typing indicator */
+    .typing {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 12px;
+    }
+
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--primary-color);
+      border-radius: 50%;
+      opacity: 0.7;
+      animation: pulse 1.2s infinite;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    /* Input area */
+    .input-area {
+      border-top: 1px solid var(--border-color);
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      background-color: #fff;
+      z-index: 10;
+    }
+
+    .input-field {
+      flex: 1;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 12px 16px;
+      font-family: inherit;
+      font-size: 15px;
+      resize: none;
+      max-height: 150px;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+
+    .input-field:focus {
+      border-color: var(--primary-color);
+    }
+
+    .send-btn {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color var(--transition);
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover {
+      background-color: #106ebe;
+    }
+
+    .send-btn:disabled {
+      background-color: #c8c8c8;
+      cursor: not-allowed;
+    }
+
+    /* Stream panel */
+    .stream-panel {
+      display: none;
+      height: 150px;
+      border-top: 1px solid var(--border-color);
+      background-color: #fafafa;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 8px 12px;
+    }
+
+    .stream-panel.active {
+      display: block;
+    }
+
+    .stream-event {
+      margin-bottom: 4px;
+      padding: 2px 0;
+      border-bottom: 1px dashed #eee;
+    }
+
+    /* Animation keyframes */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.8); opacity: 0.5; }
+      50% { transform: scale(1.2); opacity: 1; }
+    }
+
+    /* Paragraph styling in messages */
+    .message-bubble p {
+      margin-bottom: 8px;
+    }
+
+    .message-bubble p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* List styling in messages */
+    .message-bubble ul, 
+    .message-bubble ol {
+      margin-left: 20px;
+      margin-bottom: 8px;
+    }
+
+    /* New Stream Preview Styles */
+    .stream-preview {
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      width: 300px;
+      background-color: white;
+      border-radius: var(--radius-md);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    .stream-preview.expanded {
+      width: 80%;
+      max-width: 800px;
+      height: 70vh;
+      bottom: 50%;
+      right: 50%;
+      transform: translate(50%, 50%);
+    }
+
+    .preview-header {
+      padding: 12px;
+      background-color: var(--light-primary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .preview-header:hover {
+      background-color: #d9eaf7;
+    }
+
+    .preview-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      color: var(--primary-color);
+    }
+
+    .preview-content {
+      padding: 12px;
+      max-height: 80px;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+
+    .stream-preview.expanded .preview-content {
+      max-height: calc(70vh - 48px);
+      overflow-y: auto;
+    }
+
+    .preview-snippet {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--dark-color);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+
+    .expanded .preview-snippet {
+      -webkit-line-clamp: unset;
+      overflow: visible;
+    }
+
+    /* History section styling */
+    .preview-history {
+      margin-top: 16px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 12px;
+    }
+
+    .history-title {
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--dark-color);
+      font-size: 14px;
+    }
+
+    .history-item {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed var(--border-color);
+    }
+
+    .history-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .history-type {
+      font-weight: 500;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .history-type.tool {
+      color: var(--primary-color);
+    }
+
+    .history-type.text {
+      color: var(--dark-color);
+    }
+
+    .history-content {
+      font-size: 12px;
+      color: var(--dark-color);
+      background-color: #f5f5f5;
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .activity-indicator {
+      position: relative;
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+    }
+
+    .activity-indicator::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 2px solid var(--primary-color);
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+
+
+
+    /* Add this CSS to the style section (around line 500) */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.overlay-content {
+  background-color: white;
+  padding: 24px;
+  border-radius: var(--radius-md);
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+.overlay-content h2 {
+  color: var(--primary-color);
+  margin-bottom: 12px;
+  font-size: 22px;
+}
+
+.overlay-content p {
+  margin-bottom: 20px;
+  color: var(--dark-color);
+}
+
+.primary-btn {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color var(--transition);
+  margin-top: 16px;
+  width: 100%;
+}
+
+.primary-btn:hover {
+  background-color: #106ebe;
+}
+
+.overlay-content .input-field {
+  width: 100%;
+}
+
+
+
+
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <div class="header">
+      <h1>OpenSearch Assistant</h1>
+      <button id="streamToggle" class="toggle-btn">Show Stream Data</button>
+    </div>
+    
+    <div id="chatArea" class="chat-area">
+      <!-- Messages will appear here -->
+    </div>
+    
+    <div id="streamPanel" class="stream-panel">
+      <!-- Stream events will appear here -->
+    </div>
+    
+    <div class="input-area">
+      <textarea 
+        id="userInput" 
+        class="input-field" 
+        placeholder="Ask a question about your data..." 
+        rows="1"
+      >Get me Total Orders from the past two years. Select top 5 and get me the details of the Customers. Just tell me, how many of them are using outlook email from this list. the index to Search is pwefhhr7pn_order to get order Details. pwefhhr7pn_customer to get customer Details.  Fetch Index mappings before you Query. when you Search For Documents, Filter out the fields you need. Try to Avoid to Query All the Fields if you can</textarea>
+      <button id="sendBtn" class="send-btn" aria-label="Send message">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+
+<!-- Add this HTML just before the script tag (around line 602) -->
+<div id="storeHashOverlay" class="overlay">
+    <div class="overlay-content">
+      <h2>Enter Store Hash</h2>
+      <p>Please enter your store hash to continue</p>
+      <input 
+        type="text" 
+        id="storeHashInput" 
+        class="input-field" 
+        placeholder="Enter store hash..."
+        aria-label="Store hash"
+      >
+      <button id="storeHashSubmit" class="primary-btn">Continue</button>
+    </div>
+  </div>
+
+
+  <script>
+    // DOM Elements
+    // Add this at the top of your script with other state variables (around line 609)
+let storeHash = localStorage.getItem('openSearchStoreHash') || '';
+    const chatArea = document.getElementById('chatArea');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const streamToggle = document.getElementById('streamToggle');
+    const streamPanel = document.getElementById('streamPanel');
+    
+    // State variables
+    let activeTypingIndicator = null;
+    let streamPreview = null;
+    let currentStreamContent = '';
+    let processHistory = [];
+
+    // Add this before the init function (around line 613)
+// Display and handle the store hash overlay
+function showStoreHashOverlay() {
+  const overlay = document.getElementById('storeHashOverlay');
+  const storeHashInput = document.getElementById('storeHashInput');
+  const submitBtn = document.getElementById('storeHashSubmit');
+  
+  // Pre-fill if we have a stored value
+  if (storeHash) {
+    storeHashInput.value = storeHash;
+  }
+  
+  // Show overlay
+  overlay.style.display = 'flex';
+  
+  // Focus the input
+  setTimeout(() => storeHashInput.focus(), 100);
+  
+  // Add event listener for submit button
+  submitBtn.addEventListener('click', saveStoreHash);
+  
+  // Add event listener for Enter key
+  storeHashInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      saveStoreHash();
+    }
+  });
+}
+
+// Save the store hash and hide overlay
+function saveStoreHash() {
+  const storeHashInput = document.getElementById('storeHashInput');
+  const overlay = document.getElementById('storeHashOverlay');
+  
+  // Validate input
+  if (!storeHashInput.value.trim()) {
+    // Add error styling
+    storeHashInput.style.borderColor = 'var(--error-color)';
+    return;
+  }
+  
+  // Save to global variable and localStorage
+  storeHash = storeHashInput.value.trim();
+  localStorage.setItem('openSearchStoreHash', storeHash);
+  
+  // Hide overlay
+  overlay.style.display = 'none';
+}
+    
+    // Initialize the interface
+    function init() {
+
+
+        if (!storeHash) {
+    showStoreHashOverlay();
+  }
+
+
+      // Resize input as user types
+      userInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+        sendBtn.disabled = !this.value.trim();
+      });
+      
+      // Trigger initial resize
+      userInput.dispatchEvent(new Event('input'));
+      
+      // Toggle stream panel visibility
+      streamToggle.addEventListener('click', () => {
+        streamPanel.classList.toggle('active');
+        streamToggle.textContent = streamPanel.classList.contains('active') 
+          ? 'Hide Stream Data' 
+          : 'Show Stream Data';
+      });
+      
+      // Send message on button click
+      sendBtn.addEventListener('click', sendMessage);
+      
+      // Send message on Enter (but allow Shift+Enter for new line)
+      userInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+    }
+    
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    // Helper function to format text with line breaks
+    function formatText(text) {
+      if (!text) return '';
+      
+      // First escape the HTML to prevent XSS
+      const escapedText = escapeHtml(text);
+      
+      // Replace newlines with <br> tags
+      return escapedText.replace(/\n/g, '<br>');
+    }
+    
+    // Create the stream preview element
+    function createStreamPreview() {
+      if (streamPreview) {
+        // Remove existing preview
+        streamPreview.remove();
+      }
+      
+      // Reset process history for new conversation
+      processHistory = [];
+      
+      streamPreview = document.createElement('div');
+      streamPreview.className = 'stream-preview';
+      streamPreview.setAttribute('role', 'dialog');
+      streamPreview.setAttribute('aria-label', 'Stream progress preview');
+      
+      streamPreview.innerHTML = `
+        <div class="preview-header">
+          <div class="preview-title">
+            <span class="activity-indicator"></span>
+            Processing
+          </div>
+          <button class="toggle-btn" aria-expanded="false">Expand</button>
+        </div>
+        <div class="preview-content">
+          <div class="preview-snippet"></div>
+          <div class="preview-history"></div>
+        </div>
+      `;
+      
+      document.body.appendChild(streamPreview);
+      
+      // Add click handler for toggling expanded state
+      const toggleBtn = streamPreview.querySelector('.toggle-btn');
+      toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        streamPreview.classList.toggle('expanded');
+        
+        if (streamPreview.classList.contains('expanded')) {
+          toggleBtn.textContent = 'Collapse';
+          toggleBtn.setAttribute('aria-expanded', 'true');
+        } else {
+          toggleBtn.textContent = 'Expand';
+          toggleBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+      
+      // Allow clicking anywhere on header to toggle
+      streamPreview.querySelector('.preview-header').addEventListener('click', () => {
+        toggleBtn.click();
+      });
+      
+      return streamPreview;
+    }
+    
+    // Add to process history
+    function addToHistory(type, content, name) {
+      // Only keep the last 20 events to prevent excessive memory usage
+      if (processHistory.length > 20) {
+        processHistory.shift();
+      }
+      
+      processHistory.push({
+        type: type,
+        content: content,
+        name: name,
+        timestamp: new Date().toISOString()
+      });
+      
+      updateHistoryDisplay();
+    }
+    
+    // Update history display
+    function updateHistoryDisplay() {
+      if (!streamPreview) return;
+      
+      const historyContainer = streamPreview.querySelector('.preview-history');
+      if (!historyContainer) return;
+      
+      // Clear previous content
+      historyContainer.innerHTML = '';
+      
+      if (processHistory.length === 0) return;
+      
+      historyContainer.innerHTML = '<div class="history-title">Execution History</div>';
+      
+      // Create elements for each history item in reverse order (newest first)
+      processHistory.slice().reverse().forEach(item => {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'history-item';
+        
+        let typeLabel = '';
+        let typeClass = '';
+        
+        if (item.type === 'text') {
+          typeLabel = 'Text Response';
+          typeClass = 'text';
+        } else if (item.type === 'tool') {
+          typeLabel = `Tool: ${item.name || 'Unknown'}`;
+          typeClass = 'tool';
+        } else if (item.type === 'start') {
+          typeLabel = 'Started Processing';
+          typeClass = 'start';
+        } else if (item.type === 'complete') {
+          typeLabel = 'Completed';
+          typeClass = 'complete';
+        } else if (item.type === 'error') {
+          typeLabel = 'Error';
+          typeClass = 'error';
+        }
+        
+        // Format the timestamp to show only time HH:MM:SS
+        const timestamp = new Date(item.timestamp).toLocaleTimeString();
+        
+        historyItem.innerHTML = `
+          <div class="history-header">
+            <div class="history-type ${typeClass}">${typeLabel}</div>
+            <div class="history-time">${timestamp}</div>
+          </div>
+        `;
+        
+        // Add content if available
+        if (item.content) {
+          const contentDiv = document.createElement('div');
+          contentDiv.className = 'history-content';
+          
+          try {
+            // Check if it's JSON
+            if (typeof item.content === 'string' && (item.content.startsWith('{') || item.content.startsWith('['))) {
+              try {
+                const jsonObj = JSON.parse(item.content);
+                contentDiv.textContent = JSON.stringify(jsonObj, null, 2);
+              } catch (e) {
+                contentDiv.textContent = item.content;
+              }
+            } else {
+              contentDiv.textContent = typeof item.content === 'string' ? item.content : JSON.stringify(item.content, null, 2);
+            }
+          } catch (e) {
+            contentDiv.textContent = `Error displaying content: ${e.message}`;
+          }
+          
+          historyItem.appendChild(contentDiv);
+        }
+        
+        historyContainer.appendChild(historyItem);
+      });
+    }
+    
+    // Update the stream preview content
+    function updateStreamPreview(text, type, name) {
+      if (!streamPreview) {
+        createStreamPreview();
+      }
+      
+      const snippetEl = streamPreview.querySelector('.preview-snippet');
+      const titleEl = streamPreview.querySelector('.preview-title');
+      
+      // Add to history if relevant
+      if (type === 'text' || type === 'tool' || type === 'error') {
+        addToHistory(type, text, name);
+      }
+      
+      if (type === 'text') {
+        currentStreamContent = text;
+        
+        // Show only a preview in the snippet area
+        const preview = text.length > 300 ? text.substring(0, 300) + '...' : text;
+        snippetEl.innerHTML = formatText(preview);
+        
+        titleEl.innerHTML = `
+          <span class="activity-indicator"></span>
+          Processing Response
+        `;
+      } 
+      else if (type === 'tool') {
+        snippetEl.innerHTML = `Running tool: <strong>${escapeHtml(text)}</strong>`;
+        titleEl.innerHTML = `
+          <span class="activity-indicator"></span>
+          Executing Tool: ${escapeHtml(text)}
+        `;
+      }
+      else if (type === 'complete') {
+        // Don't remove the preview - just update the status
+        titleEl.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M20 6L9 17L4 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Complete
+        `;
+        
+        // No activity indicator needed
+        snippetEl.innerHTML = `Processing complete. Click to see execution details.`;
+        
+        // Add to history
+        addToHistory('complete', 'Processing completed successfully');
+      }
+      else if (type === 'error') {
+        titleEl.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d13438">
+            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Error
+        `;
+        snippetEl.style.color = 'var(--error-color)';
+        snippetEl.innerHTML = formatText(text);
+        
+        // Add to history
+        addToHistory('error', text);
+      }
+      else if (type === 'start') {
+        snippetEl.innerHTML = 'Starting process...';
+        titleEl.innerHTML = `
+          <span class="activity-indicator"></span>
+          Processing
+        `;
+        
+        // Add to history
+        addToHistory('start', 'Started processing request');
+      }
+    }
+    
+    // Add user message to chat
+    function addUserMessage(text) {
+      const messageEl = document.createElement('div');
+      messageEl.className = 'message user';
+      messageEl.innerHTML = `
+        <div class="message-bubble">${escapeHtml(text)}</div>
+        <div class="avatar">U</div>
+      `;
+      chatArea.appendChild(messageEl);
+      chatArea.scrollTop = chatArea.scrollHeight;
+      return messageEl;
+    }
+    
+    // Add assistant message to chat
+    function addAssistantMessage(text, isTyping = false) {
+      const messageEl = document.createElement('div');
+      messageEl.className = 'message assistant';
+      
+      if (isTyping) {
+        messageEl.id = 'typingIndicator';
+        messageEl.innerHTML = `
+          <div class="avatar">A</div>
+          <div class="message-bubble typing">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+          </div>
+        `;
+      } else {
+        messageEl.innerHTML = `
+          <div class="avatar">A</div>
+          <div class="message-bubble">${formatText(text)}</div>
+        `;
+      }
+      
+      chatArea.appendChild(messageEl);
+      chatArea.scrollTop = chatArea.scrollHeight;
+      return messageEl;
+    }
+    
+    // Add event to stream panel
+    function addStreamEvent(event) {
+      const eventEl = document.createElement('div');
+      eventEl.className = 'stream-event';
+      
+      let eventText;
+      if (event.event === 'start') {
+        eventText = `◯ Stream started (ID: ${event.request_id})`;
+      } else if (event.event === 'turn') {
+        eventText = `↻ Turn ${event.turn}`;
+      } else if (event.event === 'text') {
+        eventText = `✓ Text received (${event.content?.length || 0} chars)`;
+      } else if (event.event === 'tool') {
+        eventText = `⚙ Tool: ${event.name}`;
+      } else if (event.event === 'complete') {
+        eventText = `✓ Stream complete`;
+      } else if (event.event === 'error') {
+        eventText = `✗ Error: ${event.message || 'Unknown error'}`;
+        eventEl.style.color = 'var(--error-color)';
+      } else {
+        eventText = `· ${JSON.stringify(event)}`;
+      }
+      
+      eventEl.textContent = eventText;
+      streamPanel.appendChild(eventEl);
+      streamPanel.scrollTop = streamPanel.scrollHeight;
+    }
+    
+    // Handle events from the stream
+    function handleEvent(event) {
+      console.log('Event received:', event);
+      addStreamEvent(event);
+      
+      if (event.event === 'start') {
+        if (!activeTypingIndicator) {
+          activeTypingIndicator = addAssistantMessage('', true);
+        }
+        updateStreamPreview('Starting...', 'start');
+      } 
+      else if (event.event === 'text') {
+        // Remove typing indicator
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator) {
+          typingIndicator.remove();
+        }
+        activeTypingIndicator = null;
+        
+        // Update stream preview with text data
+        updateStreamPreview(event.content, 'text');
+        
+        // Don't add to chat, only store the content for the final response
+        currentStreamContent = event.content;
+      }
+      else if (event.event === 'tool') {
+        // Update preview with tool info
+        updateStreamPreview(event.name, 'tool', event.name);
+        
+        // Add tool content to history if available
+        if (event.content) {
+          addToHistory('tool_result', event.content, event.name);
+        }
+      }
+      else if (event.event === 'complete') {
+        // Update preview to complete state but don't remove it
+        updateStreamPreview('', 'complete');
+        
+        // Remove typing indicator if it still exists
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator) {
+          typingIndicator.remove();
+        }
+        
+        // Add the final response to the chat
+        if (event.response) {
+          addAssistantMessage(event.response);
+        } else if (currentStreamContent) {
+          addAssistantMessage(currentStreamContent);
+        }
+        
+        // Re-enable the send button
+        sendBtn.disabled = false;
+      }
+      else if (event.event === 'error') {
+        // Update preview with error
+        updateStreamPreview(event.message || 'An error occurred', 'error');
+        
+        // Handle error
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator) {
+          typingIndicator.remove();
+        }
+        
+        // Add simplified error message to chat
+        addAssistantMessage("Sorry, I encountered an error processing your request.");
+        
+        // Re-enable the send button
+        sendBtn.disabled = false;
+      }
+    }
+    
+    // Clean up stream preview
+    function cleanupStreamPreview() {
+      if (streamPreview) {
+        streamPreview.remove();
+        streamPreview = null;
+      }
+      processHistory = [];
+    }
+    
+    // Send message to the API
+    function sendMessage() {
+      const query = userInput.value.trim();
+      if (!query) return;
+      
+      // Clean up any existing preview
+      cleanupStreamPreview();
+      
+      // Add the user message to chat
+      addUserMessage(query);
+      
+      // Clear input and disable send button
+      userInput.value = '';
+      userInput.style.height = 'auto';
+      sendBtn.disabled = true;
+      
+      // Add typing indicator
+      activeTypingIndicator = addAssistantMessage('', true);
+      
+      // Build request
+      const apiUrl = "https://opensearch-mcp-client.lemoncliff-b4be1984.westus.azurecontainerapps.io/api/query";
+      const payload = {
+        query: query,
+        stream: true,
+        store_hash: storeHash // Add this line to include store hash
+      };
+      
+      // Make request
+      fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        if (!response.body) {
+          throw new Error("ReadableStream not supported in this browser.");
+        }
+        
+        // Process the stream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        
+        function processStream() {
+          reader.read().then(({ done, value }) => {
+            if (done) {
+              console.log("Stream complete");
+              // Check if we need to manually trigger completion event
+              if (streamPreview) {
+                updateStreamPreview('', 'complete');
+              }
+              return;
+            }
+            
+            // Decode and add to buffer
+            buffer += decoder.decode(value, { stream: true });
+            
+            // Process complete events
+            const parts = buffer.split("\n\n");
+            buffer = parts.pop(); // Keep partial chunk for next time
+            
+            // Process each complete part
+            parts.forEach(part => {
+              if (!part.trim()) return;
+              
+              // Extract data from SSE format
+              const dataMatch = part.match(/^data: (.+)$/m);
+              if (dataMatch) {
+                try {
+                  const event = JSON.parse(dataMatch[1]);
+                  handleEvent(event);
+                } catch (err) {
+                  console.error("Error parsing event:", err, part);
+                }
+              }
+            });
+            
+            // Continue reading the stream
+            processStream();
+          }).catch(err => {
+            console.error("Stream error:", err);
+            handleStreamError(err);
+          });
+        }
+        
+        processStream();
+      })
+      .catch(err => {
+        console.error("Fetch error:", err);
+        handleStreamError(err);
+      });
+    }
+    
+    // Handle stream errors
+    function handleStreamError(error) {
+      // Update preview with error
+      updateStreamPreview(error.message || 'An error occurred', 'error');
+      
+      // Remove typing indicator
+      const typingIndicator = document.getElementById('typingIndicator');
+      if (typingIndicator) {
+        typingIndicator.remove();
+      }
+      
+      // Add error message to chat
+      addAssistantMessage("Sorry, I encountered an error processing your request.");
+      
+      // Re-enable send button
+      sendBtn.disabled = false;
+    }
+    
+    // Initialize on page load
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>
