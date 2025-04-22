@@ -622,21 +622,28 @@ function showStoreHashOverlay() {
     storeHashInput.value = storeHash;
   }
   
-  // Show overlay
-  overlay.style.display = 'flex';
+  // Remove any existing event listeners by cloning and replacing the elements
+  const newSubmitBtn = submitBtn.cloneNode(true);
+  submitBtn.parentNode.replaceChild(newSubmitBtn, submitBtn);
   
-  // Focus the input
-  setTimeout(() => storeHashInput.focus(), 100);
+  const newInput = storeHashInput.cloneNode(true);
+  storeHashInput.parentNode.replaceChild(newInput, storeHashInput);
   
-  // Add event listener for submit button
-  submitBtn.addEventListener('click', saveStoreHash);
+  // Add event listeners to the new elements
+  newSubmitBtn.addEventListener('click', saveStoreHash);
   
-  // Add event listener for Enter key
-  storeHashInput.addEventListener('keydown', (e) => {
+  newInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       saveStoreHash();
     }
   });
+  
+  // Show overlay with both approaches
+  overlay.style.display = 'flex';
+  overlay.style.visibility = 'visible';
+  
+  // Focus the input after a small delay
+  setTimeout(() => document.getElementById('storeHashInput').focus(), 100);
 }
 
 // Save the store hash and hide overlay
@@ -655,18 +662,42 @@ function saveStoreHash() {
   storeHash = storeHashInput.value.trim();
   localStorage.setItem('openSearchStoreHash', storeHash);
   
-  // Hide overlay
+  // Hide overlay - use both display:none and visibility approach for robustness
   overlay.style.display = 'none';
+  overlay.style.visibility = 'hidden';
+  
+  console.log('Store hash saved:', storeHash); // Debug logging
 }
     
     // Initialize the interface
     function init() {
 
 
-        if (!storeHash) {
+      if (!storeHash) {
     showStoreHashOverlay();
+  } else {
+    // Make sure overlay is hidden if we have a store hash
+    const overlay = document.getElementById('storeHashOverlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+      overlay.style.visibility = 'hidden';
+    }
   }
-
+  
+  // Add a reset option to change store hash
+  const headerElement = document.querySelector('.header');
+  if (headerElement) {
+    const resetBtn = document.createElement('button');
+    resetBtn.textContent = 'Change Store';
+    resetBtn.className = 'toggle-btn';
+    resetBtn.style.marginLeft = '10px';
+    resetBtn.addEventListener('click', () => {
+      storeHash = '';
+      localStorage.removeItem('openSearchStoreHash');
+      showStoreHashOverlay();
+    });
+    headerElement.appendChild(resetBtn);
+  }
 
       // Resize input as user types
       userInput.addEventListener('input', function() {
