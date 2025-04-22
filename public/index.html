@@ -820,80 +820,70 @@ function saveStoreHash() {
     
     // Update history display
     function updateHistoryDisplay() {
-      if (!streamPreview) return;
-      
-      const historyContainer = streamPreview.querySelector('.preview-history');
-      if (!historyContainer) return;
-      
-      // Clear previous content
-      historyContainer.innerHTML = '';
-      
-      if (processHistory.length === 0) return;
-      
-      historyContainer.innerHTML = '<div class="history-title">Execution History</div>';
-      
-      // Create elements for each history item in reverse order (newest first)
-      processHistory.slice().reverse().forEach(item => {
-        const historyItem = document.createElement('div');
-        historyItem.className = 'history-item';
-        
-        let typeLabel = '';
-        let typeClass = '';
-        
-        if (item.type === 'text') {
-          typeLabel = 'Text Response';
-          typeClass = 'text';
-        } else if (item.type === 'tool') {
-          typeLabel = `Tool: ${item.name || 'Unknown'}`;
-          typeClass = 'tool';
-        } else if (item.type === 'start') {
-          typeLabel = 'Started Processing';
-          typeClass = 'start';
-        } else if (item.type === 'complete') {
-          typeLabel = 'Completed';
-          typeClass = 'complete';
-        } else if (item.type === 'error') {
-          typeLabel = 'Error';
-          typeClass = 'error';
-        }
-        
-        // Format the timestamp to show only time HH:MM:SS
-        const timestamp = new Date(item.timestamp).toLocaleTimeString();
-        
-        historyItem.innerHTML = `
-          <div class="history-header">
-            <div class="history-type ${typeClass}">${typeLabel}</div>
-            <div class="history-time">${timestamp}</div>
-          </div>
-        `;
-        
-        // Add content if available
-        if (item.content) {
-          const contentDiv = document.createElement('div');
-          contentDiv.className = 'history-content';
-          
-          try {
-            // Check if it's JSON
-            if (typeof item.content === 'string' && (item.content.startsWith('{') || item.content.startsWith('['))) {
-              try {
-                const jsonObj = JSON.parse(item.content);
-                contentDiv.textContent = JSON.stringify(jsonObj, null, 2);
-              } catch (e) {
-                contentDiv.textContent = item.content;
-              }
-            } else {
-              contentDiv.textContent = typeof item.content === 'string' ? item.content : JSON.stringify(item.content, null, 2);
-            }
-          } catch (e) {
-            contentDiv.textContent = `Error displaying content: ${e.message}`;
-          }
-          
-          historyItem.appendChild(contentDiv);
-        }
-        
-        historyContainer.appendChild(historyItem);
-      });
+  if (!streamPreview) return;
+  
+  const historyContainer = streamPreview.querySelector('.preview-history');
+  if (!historyContainer) return;
+  
+  // Clear previous content
+  historyContainer.innerHTML = '';
+  
+  if (processHistory.length === 0) return;
+  
+  historyContainer.innerHTML = '<div class="history-title">Execution History</div>';
+  
+  // Create elements for each history item in reverse order (newest first)
+  processHistory.slice().reverse().forEach(item => {
+    const historyItem = document.createElement('div');
+    historyItem.className = 'history-item';
+    
+    let typeLabel = '';
+    let typeClass = '';
+    
+    if (item.type === 'text') {
+      typeLabel = 'Text Response';
+      typeClass = 'text';
+    } else if (item.type === 'tool') {
+      typeLabel = `Tool: ${item.name || 'Unknown'}`;
+      typeClass = 'tool';
+    } else if (item.type === 'start') {
+      typeLabel = 'Started Processing';
+      typeClass = 'start';
+    } else if (item.type === 'complete') {
+      typeLabel = 'Completed';
+      typeClass = 'complete';
+    } else if (item.type === 'error') {
+      typeLabel = 'Error';
+      typeClass = 'error';
     }
+    
+    // Format the timestamp to show only time HH:MM:SS
+    const timestamp = new Date(item.timestamp).toLocaleTimeString();
+    
+    historyItem.innerHTML = `
+      <div class="history-header">
+        <div class="history-type ${typeClass}">${typeLabel}</div>
+        <div class="history-time">${timestamp}</div>
+      </div>
+    `;
+    
+    // Add content if available - ONLY FOR TEXT RESPONSES, NOT TOOLS
+    if (item.content && item.type === 'text') {
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'history-content';
+      
+      try {
+        contentDiv.textContent = typeof item.content === 'string' ? item.content : JSON.stringify(item.content, null, 2);
+      } catch (e) {
+        contentDiv.textContent = `Error displaying content: ${e.message}`;
+      }
+      
+      historyItem.appendChild(contentDiv);
+    }
+    
+    historyContainer.appendChild(historyItem);
+  });
+}
     
     // Update the stream preview content
     function updateStreamPreview(text, type, name) {
@@ -922,12 +912,22 @@ function saveStoreHash() {
         `;
       } 
       else if (type === 'tool') {
-        snippetEl.innerHTML = `Running tool: <strong>${escapeHtml(text)}</strong>`;
-        titleEl.innerHTML = `
-          <span class="activity-indicator"></span>
-          Executing Tool: ${escapeHtml(text)}
-        `;
-      }
+  snippetEl.innerHTML = `Running tool: <strong>${escapeHtml(text)}</strong>`;
+  titleEl.innerHTML = `
+    <span class="activity-indicator"></span>
+    Executing Tool: ${escapeHtml(text)}
+  `;
+  
+  // Don't show content, just the tool name
+  // Clear any previous content to ensure it's not displayed
+  const previewContent = streamPreview.querySelector('.preview-content');
+  if (previewContent) {
+    const existingContent = previewContent.querySelector('.tool-content');
+    if (existingContent) {
+      existingContent.remove();
+    }
+  }
+}
       else if (type === 'complete') {
         // Don't remove the preview - just update the status
         titleEl.innerHTML = `
